@@ -1,9 +1,8 @@
 blueprint:
-  name: Motion-activated Light with Light Intensity
-  description: Turn on a light when motion is detected and light is below intensity.
+  name: Motion-activated Light
+  description: Turn on a light when motion is detected.
   domain: automation
-  source_url: https://github.com/home-assistant/core/blob/dev/homeassistant/components/automation/blueprints/motion_light.yaml
-  author: Home Assistant
+  source_url: https://github.com/bemigo/simple_motion_light_illuminance_ha/edit/main/Blueprint_motionlight.yaml
   input:
     motion_entity:
       name: Motion Sensor
@@ -11,26 +10,12 @@ blueprint:
         entity:
           domain: binary_sensor
           device_class: motion
-    illuminance_entity:
-      name: Light intensity
-      selector:
-        entity:
-          domain: number
-          device_class: illuminance
     light_target:
       name: Light
       selector:
         target:
           entity:
             domain: light
-    light_level:
-      name: Light level
-      default: 10
-      selector:
-	number:
-      	  min: 0
-      	  max: 1000
-	  unit_of_measurement: lx
     no_motion_wait:
       name: Wait time
       description: Time to leave the light on after last motion is detected.
@@ -40,19 +25,26 @@ blueprint:
           min: 0
           max: 3600
           unit_of_measurement: seconds
+    light_sensor:
+      name: Light sensor
+      description: Light sensor to read from
+      selector:
+        target:
+          entity:
+            domain: sensor
+    light_threshold:
+      name: Light threshold 
+      description: Light sensor‘s lower threshold 
+      default: 200
+      selector:
+        number:
+          min: 0
+          max: 255
 
 # If motion is detected within the delay,
 # we restart the script.
 mode: restart
 max_exceeded: silent
-
-
-## BEGIN ADDED BY ME
-condition:
-  - condition: numeric_state
-    entity_id: illuminance
-    below: light
-## END ADDED BY ME
 
 trigger:
   platform: state
@@ -60,18 +52,19 @@ trigger:
   from: "off"
   to: "on"
 
+condition:
+  - condition: numeric_state
+    entity_id: !input light_sensor
+    below: !input light_threshold
+
 action:
-  - alias: "Turn on the light"
-    service: light.turn_on
+  - service: light.turn_on
     target: !input light_target
-  - alias: "Wait until there is no motion from device"
-    wait_for_trigger:
+  - wait_for_trigger:
       platform: state
       entity_id: !input motion_entity
       from: "on"
       to: "off"
-  - alias: "Wait the number of seconds that has been set"
-    delay: !input no_motion_wait
-  - alias: "Turn off the light"
-    service: light.turn_off
+  - delay: !input no_motion_wait
+  - service: light.turn_off
     target: !input light_target
